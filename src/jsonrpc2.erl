@@ -69,8 +69,10 @@ handle(Req, HandlerFun, MapFun, JsonDecode, JsonEncode)
     case Response of
         noreply -> noreply;
         {reply, Reply} ->
-            try JsonEncode(Reply) of
-                EncodedReply -> {reply, EncodedReply}
+            try Reply of
+		{options, Options, Rpl} ->
+		    {reply, {options, Options, JsonEncode(Rpl)}};
+		    Reply -> {reply, JsonEncode(Reply)}
             catch _:_ ->
                 error_logger:error_msg("Failed encoding reply as JSON: ~p",
                                        [Reply]),
@@ -116,6 +118,10 @@ parseerror() ->
 -spec make_result_response(json(), id() | undefined) -> response().
 make_result_response(_Result, undefined) ->
     noreply;
+make_result_response({options, Options, Result}, Id) ->
+    {reply, {options, Options, {[{<<"jsonrpc">>, <<"2.0">>},
+				 {<<"result">>, Result},
+				 {<<"id">>, Id}]}}};
 make_result_response(Result, Id) ->
     {reply, {[{<<"jsonrpc">>, <<"2.0">>},
               {<<"result">>, Result},
